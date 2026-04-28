@@ -7,267 +7,181 @@ const SoundEffectsPlayer = preload("./sound_effects.gd")
 const AmbientSoundsPlayer = preload("./ambient_sounds.gd")
 const MusicPlayer = preload("./music.gd")
 
-var sound_effects: SoundEffectsPlayer = SoundEffectsPlayer.new(["Sounds", "SFX"], 8)
-var ui_sound_effects: SoundEffectsPlayer = SoundEffectsPlayer.new(["UI", "Interface", "Sounds", "SFX"], 8)
-var ambient_sounds: AmbientSoundsPlayer = AmbientSoundsPlayer.new(["Sounds", "SFX"], 1)
-var music: MusicPlayer = MusicPlayer.new(["Music"], 2)
-
-var sound_process_mode: ProcessMode:
-	set(value):
-		sound_effects.process_mode = value
-	get:
-		return sound_effects.process_mode
-
-var ui_sound_process_mode: ProcessMode:
-	set(value):
-		ui_sound_effects.process_mode = value
-	get:
-		return ui_sound_effects.process_mode
-
-var ambient_sound_process_mode: ProcessMode:
-	set(value):
-		ambient_sounds.process_mode = value
-	get:
-		return ambient_sounds.process_mode
-
-var music_process_mode: ProcessMode:
-	set(value):
-		music.process_mode = value
-	get:
-		return music.process_mode
+var sound_effects: SoundEffectsPlayer = SoundEffectsPlayer.new("Sound effects", 8)
+var ui_sounds: SoundEffectsPlayer = SoundEffectsPlayer.new("UI sounds", 8)
+var ambient_sounds: AmbientSoundsPlayer = AmbientSoundsPlayer.new("Ambient sounds", 2)
+var music: MusicPlayer = MusicPlayer.new("Music", 2)
 
 
 func _init() -> void:
 	Engine.register_singleton("SoundManager", self)
 
 	add_child(sound_effects)
-	add_child(ui_sound_effects)
+	add_child(ui_sounds)
 	add_child(ambient_sounds)
 	add_child(music)
 
-	sound_process_mode = PROCESS_MODE_PAUSABLE
-	ui_sound_process_mode = PROCESS_MODE_ALWAYS
-	ambient_sound_process_mode = PROCESS_MODE_ALWAYS
-	music_process_mode = PROCESS_MODE_ALWAYS
+	sound_effects.process_mode = PROCESS_MODE_PAUSABLE
+	ui_sounds.process_mode = PROCESS_MODE_ALWAYS
+	ambient_sounds.process_mode = PROCESS_MODE_ALWAYS
+	music.process_mode = PROCESS_MODE_ALWAYS
 
+#region Volume
 
-#region Master
+func get_volume(bus_index: int) -> float:
+	return AudioServer.get_bus_volume_linear(bus_index)
 
-var master_index : int :
-	get():
-		master_index = AudioServer.get_bus_index("Master")
-		return master_index
+func set_volume(bus_index: int, volume: float) -> void:
+	AudioServer.set_bus_volume_linear(bus_index, _clamp_volume(volume))
 
-func get_master_volume() -> float:
-	return db_to_linear(AudioServer.get_bus_volume_db(master_index))
+func get_mute(bus_index: int) -> bool:
+	return AudioServer.is_bus_mute(bus_index)
 
-
-func set_master_volume(volume: float) -> void:
-	AudioServer.set_bus_volume_db(master_index, linear_to_db(volume))
-
-
-func set_master_mute(mute: bool) -> void:
-	AudioServer.set_bus_mute(master_index, mute)
-
-
-func get_master_effect(index: int) -> AudioEffect:
-	return AudioServer.get_bus_effect(master_index, index)
-
-
-func get_master_effect_list() -> Array[AudioEffect]:
-	var effect_list : Array[AudioEffect] = []
-	for index : int in AudioServer.get_bus_effect_count(AudioServer.get_bus_index("Master")):
-		effect_list.append(get_master_effect(index))
-	return effect_list
-
-
-func add_master_effect(effect: AudioEffect, index : int = -1) -> void:
-	AudioServer.add_bus_effect(master_index, effect, index)
-
-
-func remove_master_effect(index: int) -> void:
-	AudioServer.remove_bus_effect(master_index, index)
-
-
-func clear_master_effect() -> void:
-	var effect_count : int = AudioServer.get_bus_effect_count(AudioServer.get_bus_index("Master"))
-	for index : int in effect_count:
-		remove_master_effect(effect_count-index-1)
+func set_mute(bus_index: int, mute: bool) -> void:
+	AudioServer.set_bus_mute(bus_index, mute)
 
 #endregion
 
-#region Sounds
+#region Effects
 
+func get_effect(bus_index: int, effect_index: int) -> AudioEffect:
+	return AudioServer.get_bus_effect(bus_index, effect_index)
 
-func get_sound_volume() -> float:
-	return db_to_linear(AudioServer.get_bus_volume_db(AudioServer.get_bus_index(sound_effects.bus)))
+func get_effects(bus_index: int) -> Array[AudioEffect]:
+	var effect_list : Array[AudioEffect] = []
+	for effect_index : int in AudioServer.get_bus_effect_count(bus_index):
+		effect_list.append(get_effect(bus_index, effect_index))
+	return effect_list
 
+func add_effect(bus_index: int, effect: AudioEffect, index : int = -1) -> void:
+	AudioServer.add_bus_effect(bus_index, effect, index)
 
-func set_sound_volume(volume_between_0_and_1: float) -> void:
-	_show_shared_bus_warning()
-	AudioServer.set_bus_volume_db(AudioServer.get_bus_index(sound_effects.bus), linear_to_db(volume_between_0_and_1))
+func set_effect(bus_index: int, effect_index: int, enabled: bool) -> void:
+	AudioServer.set_bus_effect_enabled(bus_index, effect_index, enabled)
 
+func remove_effect(bus_index: int, effect_index: int) -> void:
+	AudioServer.remove_bus_effect(bus_index, effect_index)
 
-func play_sound(resource: AudioStream, override_bus: String = "") -> AudioStreamPlayer:
-	return sound_effects.play(resource, override_bus)
+func clear_effects(bus_index: int) -> void:
+	var effect_count : int = AudioServer.get_bus_effect_count(bus_index)
+	for effect_index : int in effect_count:
+		remove_effect(bus_index ,effect_count - effect_index - 1)
 
+#endregion
 
-func play_sound_with_pitch(resource: AudioStream, pitch: float = 1.0, override_bus: String = "") -> AudioStreamPlayer:
+#region Master
+
+func get_master_index() -> int:
+	return AudioServer.get_bus_index("Master")
+
+#endregion
+
+#region Sound effects
+
+func get_sound_effects_index() -> int:
+	return AudioServer.get_bus_index(sound_effects.bus)
+
+func play_sound_effect(resource: AudioStream, pitch: float = 1.0, override_bus: String = "") -> AudioStreamPlayer:
 	var player: AudioStreamPlayer = sound_effects.play(resource, override_bus)
 	player.pitch_scale = pitch
 	return player
 
-
-func stop_sound(resource: AudioStream) -> void:
+func stop_sound_effect(resource: AudioStream) -> void:
 	return sound_effects.stop(resource)
 
-
-func set_default_sound_bus(bus: String) -> void:
+func set_sound_effects_bus(bus: String) -> void:
 	sound_effects.bus = bus
-
 
 #endregion
 
 #region UI sounds
 
+func get_ui_sounds_index() -> int:
+	return AudioServer.get_bus_index(ui_sounds.bus)
 
-func get_ui_sound_volume() -> float:
-	return db_to_linear(AudioServer.get_bus_volume_db(AudioServer.get_bus_index(ui_sound_effects.bus)))
-
-
-func set_ui_sound_volume(volume_between_0_and_1: float) -> void:
-	_show_shared_bus_warning()
-	AudioServer.set_bus_volume_db(AudioServer.get_bus_index(ui_sound_effects.bus), linear_to_db(volume_between_0_and_1))
-
-
-func play_ui_sound(resource: AudioStream, override_bus: String = "") -> AudioStreamPlayer:
-	return ui_sound_effects.play(resource, override_bus)
-
-
-func play_ui_sound_with_pitch(resource: AudioStream, pitch: float = 1.0, override_bus: String = "") -> AudioStreamPlayer:
-	var player: AudioStreamPlayer = ui_sound_effects.play(resource, override_bus)
+func play_ui_sound(resource: AudioStream, pitch: float = 1.0, override_bus: String = "") -> AudioStreamPlayer:
+	var player: AudioStreamPlayer = ui_sounds.play(resource, override_bus)
 	player.pitch_scale = pitch
 	return player
 
-
 func stop_ui_sound(resource: AudioStream) -> void:
-	return ui_sound_effects.stop(resource)
+	return ui_sounds.stop(resource)
 
-
-func set_default_ui_sound_bus(bus: String) -> void:
-	ui_sound_effects.bus = bus
-
+func set_ui_sounds_bus(bus: String) -> void:
+	ui_sounds.bus = bus
 
 #endregion
 
-#region Ambient sound
+#region Ambient sounds
 
-
-func get_ambient_sound_volume() -> float:
-	return db_to_linear(AudioServer.get_bus_volume_db(AudioServer.get_bus_index(ambient_sounds.bus)))
-
-
-func set_ambient_sound_volume(volume_between_0_and_1: float) -> void:
-	_show_shared_bus_warning()
-	AudioServer.set_bus_volume_db(AudioServer.get_bus_index(ambient_sounds.bus), linear_to_db(volume_between_0_and_1))
-
+func get_ambient_sounds_index() -> int:
+	return AudioServer.get_bus_index(ambient_sounds.bus)
 
 func play_ambient_sound(resource: AudioStream, fade_in_duration: float = 0.0, override_bus: String = "") -> AudioStreamPlayer:
 	return ambient_sounds.play(resource, fade_in_duration, override_bus)
 
-
 func stop_ambient_sound(resource: AudioStream, fade_out_duration: float = 0.0) -> void:
 	ambient_sounds.stop(resource, fade_out_duration)
-
 
 func stop_all_ambient_sounds(fade_out_duration: float = 0.0) -> void:
 	ambient_sounds.stop_all(fade_out_duration)
 
-
-func set_default_ambient_sound_bus(bus: String) -> void:
+func set_ambient_sound_bus(bus: String) -> void:
 	ambient_sounds.bus = bus
-
 
 #endregion
 
 #region Music
 
+func get_music_index() -> int:
+	return AudioServer.get_bus_index(music.bus)
 
-func get_music_volume() -> float:
-	return db_to_linear(AudioServer.get_bus_volume_db(AudioServer.get_bus_index(music.bus)))
-
-
-func set_music_volume(volume_between_0_and_1: float) -> void:
-	_show_shared_bus_warning()
-	AudioServer.set_bus_volume_db(AudioServer.get_bus_index(music.bus), linear_to_db(volume_between_0_and_1))
-
-
-func play_music(resource: AudioStream, crossfade_duration: float = 0.0, override_bus: String = "") -> AudioStreamPlayer:
-	return music.play(resource, 0.0,  0.0, crossfade_duration, override_bus)
-
-
-func play_music_from_position(resource: AudioStream, position: float = 0.0, crossfade_duration: float = 0.0, override_bus: String = "") -> AudioStreamPlayer:
-	return music.play(resource, position, 0.0, crossfade_duration, override_bus)
-
-
-func play_music_at_volume(resource: AudioStream, volume: float = 0.0, crossfade_duration: float = 0.0, override_bus: String = "") -> AudioStreamPlayer:
-	return music.play(resource, 0.0, volume, crossfade_duration, override_bus)
-
-
-func play_music_from_position_at_volume(resource: AudioStream, position: float = 0.0, volume: float = 0.0, crossfade_duration: float = 0.0, override_bus: String = "") -> AudioStreamPlayer:
+func play_music(resource: AudioStream, position: float = 0.0, volume: float = 1.0, crossfade_duration: float = 0.0, override_bus: String = "") -> AudioStreamPlayer:
 	return music.play(resource, position, volume, crossfade_duration, override_bus)
-
 
 func get_music_track_history() -> Array:
 	return music.track_history
 
-
 func get_last_played_music_track() -> String:
 	return music.track_history[0]
-
 
 func is_music_playing(resource: AudioStream = null) -> bool:
 	return music.is_playing(resource)
 
-
 func is_music_track_playing(resource_path: String) -> bool:
 	return music.is_track_playing(resource_path)
-
 
 func get_currently_playing_music() -> Array:
 	return music.get_currently_playing()
 
-
 func get_currently_playing_music_tracks() -> Array:
 	return music.get_currently_playing_tracks()
-
 
 func pause_music(resource: AudioStream = null) -> void:
 	music.pause(resource)
 
-
 func resume_music(resource: AudioStream = null) -> void:
 	music.resume(resource)
-
 
 func stop_music(fade_out_duration: float = 0.0) -> void:
 	music.stop(fade_out_duration)
 
-
-func set_default_music_bus(bus: String) -> void:
+func set_music_bus(bus: String) -> void:
 	music.bus = bus
-
 
 #endregion
 
-#region helpers
-
+#region Helpers
 
 func _show_shared_bus_warning() -> void:
-	if "Master" in [music.bus, sound_effects.bus, ui_sound_effects.bus, ambient_sounds.bus]:
+	if "Master" in [music.bus, sound_effects.bus, ui_sounds.bus, ambient_sounds.bus]:
 		push_warning("Using the Master sound bus directly isn't recommended.")
-	if music.bus == sound_effects.bus or music.bus == ui_sound_effects.bus:
+	if music.bus == sound_effects.bus or music.bus == ui_sounds.bus:
 		push_warning("Both music and sounds are using the same bus: %s" % music.bus)
 
+func _clamp_volume(volume: float) -> float:
+	if not (0.0 <= volume and volume <= 1.0):
+		push_warning("Attempted to change volume to an invalid value :",volume)
+	return clampf(volume, 0.0, 1.0)
 
 #endregion

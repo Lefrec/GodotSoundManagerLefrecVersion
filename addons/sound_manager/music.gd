@@ -36,8 +36,6 @@ func is_playing(resource: AudioStream) -> bool:
 
 func stop(fade_out_duration: float = 0.0) -> void:
 	for player: AudioStreamPlayer in busy_players:
-		if fade_out_duration <= 0.0:
-			fade_out_duration = 0.01
 		fade_volume(player, player.volume_db, -80, fade_out_duration)
 
 

@@ -1,35 +1,26 @@
 extends Node
 
-
-@export var default_busses: PackedStringArray = []
-@export var default_pool_size: int = 8
-
-
-var available_players: Array[AudioStreamPlayer] = []
-var busy_players: Array[AudioStreamPlayer] = []
-var bus: String = "Master"
+var max_pool_size: int
+var available_players: Array[AudioStreamPlayer]
+var busy_players: Array[AudioStreamPlayer]
+var bus: String
 
 var _tweens: Dictionary[AudioStreamPlayer, Tween] = {}
 
 
-func _init(possible_busses: PackedStringArray = default_busses, pool_size: int = default_pool_size) -> void:
-	bus = get_possible_bus(possible_busses)
-
+func _init(expected_bus: String, pool_size: int = 8) -> void:
+	bus = get_bus(expected_bus)
+	
+	max_pool_size = pool_size
+	
 	for i: int in pool_size:
 		increase_pool()
 
-func get_possible_bus(possible_busses: PackedStringArray) -> String:
-	for possible_bus: String in possible_busses:
-		var cases: PackedStringArray = [
-			possible_bus,
-			possible_bus.to_lower(),
-			possible_bus.to_camel_case(),
-			possible_bus.to_pascal_case(),
-			possible_bus.to_snake_case()
-		]
-		for case: String in cases:
-			if AudioServer.get_bus_index(case) > -1:
-				return case
+
+func get_bus(expected_bus: String) -> String:
+	if AudioServer.get_bus_index(expected_bus) > -1:
+		return expected_bus
+	push_warning("Expected bus was not found, check if the bus exists and if the name matches.\nExpected bus :",expected_bus)
 	return "Master"
 
 
@@ -85,7 +76,7 @@ func mark_player_as_available(player: AudioStreamPlayer) -> void:
 	if busy_players.has(player):
 		busy_players.erase(player)
 
-	if available_players.size() >= default_pool_size:
+	if available_players.size() >= max_pool_size:
 		available_players.erase(player)
 		player.queue_free()
 	elif not available_players.has(player):
@@ -107,23 +98,30 @@ func increase_pool() -> void:
 	player.finished.connect(_on_player_finished.bind(player))
 
 
-func fade_volume(player: AudioStreamPlayer, from_volume: float, to_volume: float, duration: float) -> AudioStreamPlayer:
+func fade_volume(player: AudioStreamPlayer, from: float, to: float, duration: float) -> AudioStreamPlayer:
+	# Clamp volume values between 0 and 1
+	from = clampf(from, 0.0, 1.0)
+	to = clampf(to, 0.0, 1.0)
+	
+	# Make sure duration isn't negative or ridiculously long
+	duration = clampf(duration, 0.0, 100.0)
+	
 	# Remove any tweens that might already be on this player
 	_remove_tween(player)
 
 	# Start a new tween
 	var tween: Tween = get_tree().create_tween().bind_node(self)
 
-	player.volume_db = from_volume
-	if from_volume > to_volume:
+	player.volume_linear = from
+	if from > to:
 		# Fade out
-		tween.tween_property(player, "volume_db", to_volume, duration).set_trans(Tween.TRANS_CIRC).set_ease(Tween.EASE_IN)
+		tween.tween_property(player, "volume_linear", to, duration).set_trans(Tween.TRANS_CIRC).set_ease(Tween.EASE_IN)
 	else:
 		# Fade in
-		tween.tween_property(player, "volume_db", to_volume, duration).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tween.tween_property(player, "volume_linear", to, duration).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 	_tweens[player] = tween
-	tween.finished.connect(_on_fade_completed.bind(player, tween, from_volume, to_volume, duration))
+	tween.finished.connect(_on_fade_completed.bind(player, tween, from, to, duration))
 
 	return player
 
@@ -147,11 +145,11 @@ func _on_player_finished(player: AudioStreamPlayer) -> void:
 	mark_player_as_available(player)
 
 
-func _on_fade_completed(player: AudioStreamPlayer, _tween: Tween, _from_volume: float, to_volume: float, _duration: float) -> void:
+func _on_fade_completed(player: AudioStreamPlayer, _tween: Tween, _from: float, to: float, _duration: float) -> void:
 	_remove_tween(player)
 
 	# If we just faded out then our player is now available
-	if to_volume <= -79.0:
+	if to <= 0:
 		player.stop()
 		mark_player_as_available(player)
 
