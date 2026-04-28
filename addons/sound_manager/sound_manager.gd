@@ -1,3 +1,5 @@
+@tool
+
 extends Node
 
 
@@ -22,13 +24,11 @@ var ui_sound_process_mode: ProcessMode:
 	get:
 		return ui_sound_effects.process_mode
 
-
 var ambient_sound_process_mode: ProcessMode:
 	set(value):
 		ambient_sounds.process_mode = value
 	get:
 		return ambient_sounds.process_mode
-
 
 var music_process_mode: ProcessMode:
 	set(value):
@@ -50,6 +50,51 @@ func _init() -> void:
 	ambient_sound_process_mode = PROCESS_MODE_ALWAYS
 	music_process_mode = PROCESS_MODE_ALWAYS
 
+
+#region Master
+
+var master_index : int :
+	get():
+		master_index = AudioServer.get_bus_index("Master")
+		return master_index
+
+func get_master_volume() -> float:
+	return db_to_linear(AudioServer.get_bus_volume_db(master_index))
+
+
+func set_master_volume(volume: float) -> void:
+	AudioServer.set_bus_volume_db(master_index, linear_to_db(volume))
+
+
+func set_master_mute(mute: bool) -> void:
+	AudioServer.set_bus_mute(master_index, mute)
+
+
+func get_master_effect(index: int) -> AudioEffect:
+	return AudioServer.get_bus_effect(master_index, index)
+
+
+func get_master_effect_list() -> Array[AudioEffect]:
+	var effect_list : Array[AudioEffect] = []
+	for index : int in AudioServer.get_bus_effect_count(AudioServer.get_bus_index("Master")):
+		effect_list.append(get_master_effect(index))
+	return effect_list
+
+
+func add_master_effect(effect: AudioEffect, index : int = -1) -> void:
+	AudioServer.add_bus_effect(master_index, effect, index)
+
+
+func remove_master_effect(index: int) -> void:
+	AudioServer.remove_bus_effect(master_index, index)
+
+
+func clear_master_effect() -> void:
+	var effect_count : int = AudioServer.get_bus_effect_count(AudioServer.get_bus_index("Master"))
+	for index : int in effect_count:
+		remove_master_effect(effect_count-index-1)
+
+#endregion
 
 #region Sounds
 
@@ -146,6 +191,7 @@ func set_default_ambient_sound_bus(bus: String) -> void:
 #endregion
 
 #region Music
+
 
 func get_music_volume() -> float:
 	return db_to_linear(AudioServer.get_bus_volume_db(AudioServer.get_bus_index(music.bus)))

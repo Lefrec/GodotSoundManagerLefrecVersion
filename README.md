@@ -1,3 +1,5 @@
+![Icon](./icon.png)
+
 # Godot Sound Manager
 
 _Lefrec Version_
