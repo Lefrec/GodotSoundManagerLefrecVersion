@@ -24,7 +24,7 @@ Go check the original if you don't care about the modifications I made.
 - Handles music crossfades
 - ~~Autodetect probable audio buses for both sounds and music~~
 - ~~Splits sounds up into UI sounds and local sounds~~ -> Split sounds up into sound effects, UI sounds, ambient sounds and music
-- ~~Supports both GDScript and C#~~ -> Only GDScript is supported for now
+- Supports both GDScript and C#
 
 ### Added features
 
@@ -54,3 +54,4 @@ Go check the original if you don't care about the modifications I made.
 - [Music](./doc/Music.md)
 - [Volume and Effects](./doc/Volume_and_Effects.md)
 - [Other Features](./doc/Other_Features.md)
+- [Using C#](./doc/Using_CSharp.md)

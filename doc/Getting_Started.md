@@ -57,3 +57,5 @@ You can adjust **volume** and add **effects** to buses through script thanks to 
 You can also change the default bus of each sound type if you want or override the bus used for a single audio stream.
 
 [more about changing and overriding buses](./Other_Features.md)
+
+## [Using C#](./Using_CSharp.md)
