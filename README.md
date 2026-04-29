@@ -43,6 +43,8 @@ Go check the original if you don't care about the modifications I made.
 - Adding optional spatialization to ambient sounds
 - Allow looping ambient sounds
 - Playlist system for music
+- Allow looping music
+- `is_paused()` function for music
 
 ## Documentation
 

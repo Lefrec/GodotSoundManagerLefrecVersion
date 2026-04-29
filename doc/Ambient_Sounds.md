@@ -18,7 +18,6 @@ Stop any ambient sounds player that is currently playing the given audio stream.
 
 Stop any ambient sounds player that is currently playing.
 
-
 ## Notes
 
 - Ambient sounds won't play again if they're already playing
