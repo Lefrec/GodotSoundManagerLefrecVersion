@@ -35,7 +35,7 @@ func prepare(resource: AudioStream, override_bus: String = "") -> AudioStreamPla
 
 	player.stream = resource
 	player.bus = override_bus if override_bus != "" else bus
-	player.volume_db = linear_to_db(1.0)
+	player.volume_linear = 1.0
 	player.pitch_scale = 1
 
 	mark_player_as_busy(player)
@@ -115,10 +115,10 @@ func fade_volume(player: AudioStreamPlayer, from: float, to: float, duration: fl
 	player.volume_linear = from
 	if from > to:
 		# Fade out
-		tween.tween_property(player, "volume_linear", to, duration).set_trans(Tween.TRANS_CIRC).set_ease(Tween.EASE_IN)
+		tween.tween_property(player, "volume_linear", to, duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	else:
 		# Fade in
-		tween.tween_property(player, "volume_linear", to, duration).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tween.tween_property(player, "volume_linear", to, duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 	_tweens[player] = tween
 	tween.finished.connect(_on_fade_completed.bind(player, tween, from, to, duration))
