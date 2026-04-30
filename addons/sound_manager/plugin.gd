@@ -6,6 +6,7 @@ func _enter_tree() -> void:
 	set_up_default_buses()
 	add_autoload_singleton("SoundManager", "res://addons/sound_manager/sound_manager.gd")
 
+
 func _exit_tree() -> void:
 	remove_autoload_singleton("SoundManager")
 
