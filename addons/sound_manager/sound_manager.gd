@@ -15,8 +15,6 @@ var music: MusicPlayer = MusicPlayer.new("Music", 2)
 
 
 func _init() -> void:
-	Engine.register_singleton("SoundManager", self)
-
 	add_child(sound_effects)
 	add_child(ui_sounds)
 	add_child(ambient_sounds)
